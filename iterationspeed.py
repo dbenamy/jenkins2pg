@@ -15,17 +15,6 @@ def main():
     builds = cur.fetchall()
     cur.execute('select * from builds where job = %s order by timestamp_utc asc', ('deploy-dogweb-staging',))
     deploys = cur.fetchall()
-    # for d in data:
-    #     print d
-    # data = filter(lambda d: len(d['triggers']) == 1 and d['triggers'][0].startswith('Started by GitHub push'), data)
-    # for d in data:
-        # print d
-
-    # print_tree(make_tree(ci, builds, deploys))
-
-    # for each push (dogweb-ci triggered by push)
-    #     how long did it take for that code to get onto staging?
-    #     ie what was the next builds that succeeded and what was the next deploys that succeeded
 
     iteration_times = []
     for ci in cis:
@@ -102,48 +91,6 @@ def percentile(N, percent, key=lambda x:x):
     d0 = key(N[int(f)]) * (c-k)
     d1 = key(N[int(c)]) * (k-f)
     return d0+d1
-
-
-# def make_tree(ci, build, deploy):
-#     ci_by_id = by_id(ci)
-#     build_by_id = by_id(build)
-#     deploy_by_id = by_id(deploy)
-
-#     link(build_by_id, ci_by_id, 'dogweb-ci')
-#     link(deploy_by_id, build_by_id, 'build-dogweb-staging')
-
-#     return ci_by_id.values()
-
-
-# def link(children, parents, parent_proj):
-#     trig_regex = r'Started by upstream project "%s" build number ([0-9,]+)' % parent_proj
-#     for child in children.values():
-#         for t in child['triggers']:
-#             m = re.match(trig_regex, t)
-#             if m:
-#                 tid = int(m.groups()[0].replace(',', ''))
-#                 if tid in parents:
-#                     # Sometimes it's set to None.
-#                     parents[tid]['triggered'] = (parents[tid].get('triggered') or []).append(child)
-#                 else:
-#                     print "Build %r was triggered by %r which isn't a known %s job." % (child['id'], tid, parent_proj)
-#             else:
-#                 print "Ignoring trigger %r on child %r" % (t, child['id'])
-
-
-# def print_tree(lst, indent=0):
-#     import pprint
-#     pp = pprint.PrettyPrinter(indent=4)
-#     pp.pprint(lst)
-#     # for x in lst:
-#     #     print ' ' * indent + x
-
-
-# def by_id(lst):
-#     res = {}
-#     for x in lst:
-#         res[x['id']] = x
-#     return res
 
 
 if __name__ == '__main__':
