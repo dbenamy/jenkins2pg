@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 from os import environ
 import re
 
@@ -20,8 +21,14 @@ def main():
 def get_builds(jenkins_url, job):
     url = '%s/job/%s/api/json?depth=1&tree=allBuilds' % (jenkins_url, job)
     resp = requests.get(url).json()
+    if 'builds' not in resp:
+        print "Error:\n" + json.dumps(resp, sort_keys=True, indent=4)#, separators=(',', ': '))
+        raise Exception
     builds = []
     for build in resp['builds']:
+        if not build['result']:
+            # it's in progress
+            continue
         builds.append({
             'id': int(build['id']),
             'timestamp': datetime.utcfromtimestamp(float(build['timestamp']) / 1000),  # ms to sec
