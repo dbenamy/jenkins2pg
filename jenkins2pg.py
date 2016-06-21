@@ -19,7 +19,7 @@ def main():
 
 
 def get_builds(jenkins_url, job):
-    url = '%s/job/%s/api/json?depth=1&tree=allBuilds' % (jenkins_url, job)
+    url = '%s/job/%s/api/json?depth=1' % (jenkins_url, job)
     resp = requests.get(url).json()
     if 'builds' not in resp:
         print "Error:\n" + json.dumps(resp, sort_keys=True, indent=4)#, separators=(',', ': '))
