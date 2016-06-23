@@ -1,3 +1,7 @@
+"""Calculates stats on dev iteration speed given a 3 jobs workflow (test, build,
+deploy).
+
+"""
 from datetime import datetime, timedelta
 import math
 from os import environ
@@ -21,17 +25,17 @@ def main():
         # print dict(ci)
         if ci['result'] != 'SUCCESS':
             continue
-        ci_end = ci['timestamp_utc'] + timedelta(seconds=ci['duration'])#, milliseconds=ci['duration'] / 1000 % 1000)
+        ci_end = ci['timestamp_utc'] + timedelta(seconds=ci['duration'])
         bld = first_success_from(builds, ci_end)
         if not bld:
             print "Didn't find any successful builds after ci %r." % ci['id']
             continue
-        bld_end = bld['timestamp_utc'] + timedelta(seconds=bld['duration'])#, milliseconds=ci['duration'] / 1000 % 1000)
+        bld_end = bld['timestamp_utc'] + timedelta(seconds=bld['duration'])
         deploy = first_success_from(deploys, bld_end)
         if not deploy:
             print "Didn't find any successful deploys after build %r." % bld['id']
             continue
-        deploy_end = deploy['timestamp_utc'] + timedelta(seconds=deploy['duration'])#, milliseconds=ci['duration'] / 1000 % 1000)
+        deploy_end = deploy['timestamp_utc'] + timedelta(seconds=deploy['duration'])
         total = deploy_end - ci['timestamp_utc']
         iteration_times.append(total.total_seconds())
         print "dogweb-ci %s at %sZ took %s to get onto staging." % (
