@@ -13,11 +13,18 @@ import psycopg2.extras
 def main():
     conn = psycopg2.connect("dbname=postgres")
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute('select * from builds where job = %s order by timestamp_utc asc', ('dogweb-ci',))
+    ci_sql = ('select * from builds '
+              'where job = %s and timestamp_utc <= %s '
+              'order by timestamp_utc asc')
+    newest = datetime.utcnow() - timedelta(hours=5)
+    other_sql = ('select * from builds '
+                 'where job = %s '
+                 'order by timestamp_utc asc')
+    cur.execute(ci_sql, ('dogweb-ci', newest))
     cis = cur.fetchall()
-    cur.execute('select * from builds where job = %s order by timestamp_utc asc', ('build-dogweb-staging',))
+    cur.execute(other_sql, ('build-dogweb-staging',))
     builds = cur.fetchall()
-    cur.execute('select * from builds where job = %s order by timestamp_utc asc', ('deploy-dogweb-staging',))
+    cur.execute(other_sql, ('deploy-dogweb-staging',))
     deploys = cur.fetchall()
 
     iteration_times = []
