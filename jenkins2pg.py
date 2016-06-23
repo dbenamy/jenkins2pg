@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import logging
 from os import environ
 import re
 
@@ -7,22 +8,43 @@ import psycopg2
 import requests
 
 
+log = logging.getLogger()
+
+
 def main():
+    logging.basicConfig()
     jenkins_url = environ['JENKINS_URL']
-    conn = psycopg2.connect("dbname=postgres")
-    for b in get_builds(jenkins_url, 'dogweb-ci'):
-        upsert(conn, 'dogweb-ci', b)
-    for b in get_builds(jenkins_url, 'build-dogweb-staging'):
-        upsert(conn, 'build-dogweb-staging', b)
-    for b in get_builds(jenkins_url, 'deploy-dogweb-staging'):
-        upsert(conn, 'deploy-dogweb-staging', b)
+    conn = psycopg2.connect(environ['POSTGRES_DSN'])
+    errors = False
+    for job in get_jobs(jenkins_url):
+        print "Downloading info for last 100 builds of %r" % job
+        try:
+            for build in get_builds(jenkins_url, job):
+                save_build(conn, job, build)
+        except Exception:
+            log.exception("Error saving builds for %r", job)
+            errors = True
+    return errors
+
+
+def get_jobs(jenkins_url):
+    url = '%s/api/json' % jenkins_url
+    # decode/encode to skip invalid chars
+    resp = requests.get(url).text
+    resp = json.loads(resp)
+    if 'jobs' not in resp:
+        print "Error:\n" + json.dumps(resp, sort_keys=True, indent=4)
+        raise Exception
+    return [job['name'] for job in resp['jobs']]
 
 
 def get_builds(jenkins_url, job):
     url = '%s/job/%s/api/json?depth=1' % (jenkins_url, job)
-    resp = requests.get(url).json()
+    # decode/encode to skip invalid chars
+    resp = requests.get(url).text
+    resp = json.loads(resp)
     if 'builds' not in resp:
-        print "Error:\n" + json.dumps(resp, sort_keys=True, indent=4)#, separators=(',', ': '))
+        print "Error:\n" + json.dumps(resp, sort_keys=True, indent=4)
         raise Exception
     builds = []
     for build in resp['builds']:
@@ -39,7 +61,7 @@ def get_builds(jenkins_url, job):
     return builds
 
 
-def upsert(conn, job, build):
+def save_build(conn, job, build):
     cur = conn.cursor()
     cur.execute('''
         INSERT INTO builds (job, jenkins_id, timestamp_utc, duration, result)
@@ -70,4 +92,4 @@ def upsert(conn, job, build):
 
 
 if __name__ == '__main__':
-    main()
+    exit(main())
