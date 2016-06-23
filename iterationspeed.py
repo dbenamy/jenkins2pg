@@ -52,9 +52,9 @@ def main():
     print '\n-----------------------------\n'
 
     iteration_times.sort()
-    print "%d builds counted" % len(iteration_times)
-    print "Earliest: %s" % cis[0]['timestamp_utc']
-    print "Most recent: %s" % cis[-1]['timestamp_utc']
+    print "Earliest ci: %s" % cis[0]['timestamp_utc']
+    print "Most recent ci: %s" % cis[-1]['timestamp_utc']
+    print "%d builds measured" % len(iteration_times)
     print "Median: %s" % pretty_elapsed(percentile(iteration_times,  0.5))
     print "p95: %s" % pretty_elapsed(percentile(iteration_times, 0.95))
     print "p99: %s" % pretty_elapsed(percentile(iteration_times, 0.99))
