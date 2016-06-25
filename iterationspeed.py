@@ -11,7 +11,7 @@ import psycopg2.extras
 
 
 def main():
-    conn = psycopg2.connect("dbname=postgres")
+    conn = psycopg2.connect(environ['POSTGRES_DSN'])
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     ci_sql = ('select * from builds '
               'where job = %s and timestamp_utc <= %s '
