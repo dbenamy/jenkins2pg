@@ -1,5 +1,5 @@
-"""Calculates stats on dev iteration speed given a 3 jobs workflow (test, build,
-deploy).
+"""Calculates stats on dev iteration speed over the previous week given a 3 job
+workflow (test, build, deploy).
 
 """
 from datetime import datetime, timedelta
@@ -12,19 +12,24 @@ import psycopg2.extras
 
 def main():
     conn = psycopg2.connect(environ['POSTGRES_DSN'])
+
+    today = datetime.utcnow().date()
+    dow = today.weekday() + 1 # shift the mapping so mon is 1 and sun 7
+    last_sun = today - timedelta(days=dow)
+    prev_sun = last_sun - timedelta(days=7)
+
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     ci_sql = ('select * from builds '
-              'where job = %s and timestamp_utc <= %s '
+              'where job = %s and timestamp_utc >= %s and timestamp_utc < %s '
               'order by timestamp_utc asc')
-    newest = datetime.utcnow() - timedelta(hours=5)
     other_sql = ('select * from builds '
-                 'where job = %s '
+                 'where job = %s and timestamp_utc >= %s '
                  'order by timestamp_utc asc')
-    cur.execute(ci_sql, ('dogweb-ci', newest))
+    cur.execute(ci_sql, ('dogweb-ci', prev_sun, last_sun))
     cis = cur.fetchall()
-    cur.execute(other_sql, ('build-dogweb-staging',))
+    cur.execute(other_sql, ('build-dogweb-staging', prev_sun))
     builds = cur.fetchall()
-    cur.execute(other_sql, ('deploy-dogweb-staging',))
+    cur.execute(other_sql, ('deploy-dogweb-staging', prev_sun))
     deploys = cur.fetchall()
 
     iteration_times = []
@@ -51,10 +56,9 @@ def main():
 
     print '\n-----------------------------\n'
 
+    print "%d ci builds (%d iterations) from %s to %s" % (
+        len(cis), len(iteration_times), prev_sun, last_sun)
     iteration_times.sort()
-    print "Earliest ci: %s" % cis[0]['timestamp_utc']
-    print "Most recent ci: %s" % cis[-1]['timestamp_utc']
-    print "%d builds measured" % len(iteration_times)
     print "Median: %s" % pretty_elapsed(percentile(iteration_times,  0.5))
     print "p95: %s" % pretty_elapsed(percentile(iteration_times, 0.95))
     print "p99: %s" % pretty_elapsed(percentile(iteration_times, 0.99))
