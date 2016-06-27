@@ -1,6 +1,7 @@
-"""Calculates stats on dev iteration speed over the previous week given a 3 job
-workflow (test, build, deploy).
+"""Calculates stats on dev iteration speed.
 
+Looks at the previous weeks builds and assumes a 3 job workflow (test, build,
+deploy).
 """
 from datetime import datetime, timedelta
 import math
@@ -11,13 +12,22 @@ import psycopg2.extras
 
 
 def main():
-    conn = psycopg2.connect(environ['POSTGRES_DSN'])
+    postgres_dsn = environ['POSTGRES_DSN']
+    stats(postgres_dsn, start_of_last_week())
 
+
+def start_of_last_week():
     today = datetime.utcnow().date()
     dow = today.weekday() + 1 # shift the mapping so mon is 1 and sun 7
-    last_sun = today - timedelta(days=dow)
-    prev_sun = last_sun - timedelta(days=7)
+    sun = today - timedelta(days=dow)
+    return sun - timedelta(days=7)
 
+
+def stats(postgres_dsn, start):
+    """Prints stats for the week starting at start.
+    """
+    end = start + timedelta(days=7)
+    conn = psycopg2.connect(postgres_dsn)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     ci_sql = ('select * from builds '
               'where job = %s and timestamp_utc >= %s and timestamp_utc < %s '
@@ -25,11 +35,11 @@ def main():
     other_sql = ('select * from builds '
                  'where job = %s and timestamp_utc >= %s '
                  'order by timestamp_utc asc')
-    cur.execute(ci_sql, ('dogweb-ci', prev_sun, last_sun))
+    cur.execute(ci_sql, ('dogweb-ci', start, end))
     cis = cur.fetchall()
-    cur.execute(other_sql, ('build-dogweb-staging', prev_sun))
+    cur.execute(other_sql, ('build-dogweb-staging', start))
     builds = cur.fetchall()
-    cur.execute(other_sql, ('deploy-dogweb-staging', prev_sun))
+    cur.execute(other_sql, ('deploy-dogweb-staging', start))
     deploys = cur.fetchall()
 
     iteration_times = []
@@ -57,7 +67,7 @@ def main():
     print '\n-----------------------------\n'
 
     print "%d ci builds (%d iterations) from %s to %s" % (
-        len(cis), len(iteration_times), prev_sun, last_sun)
+        len(cis), len(iteration_times), start, end)
     iteration_times.sort()
     print "Median: %s" % pretty_elapsed(percentile(iteration_times,  0.5))
     print "p95: %s" % pretty_elapsed(percentile(iteration_times, 0.95))
