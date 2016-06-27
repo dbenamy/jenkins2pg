@@ -69,9 +69,18 @@ def stats(postgres_dsn, start):
     print "%d ci builds (%d iterations) from %s to %s" % (
         len(cis), len(iteration_times), start, end)
     iteration_times.sort()
-    print "Median: %s" % pretty_elapsed(percentile(iteration_times,  0.5))
-    print "p95: %s" % pretty_elapsed(percentile(iteration_times, 0.95))
-    print "p99: %s" % pretty_elapsed(percentile(iteration_times, 0.99))
+    p50 = percentile(iteration_times,  0.5)
+    p95 = percentile(iteration_times, 0.95)
+    p99 = percentile(iteration_times, 0.99)
+    print "Median: %s" % pretty_elapsed(p50)
+    print "p95: %s" % pretty_elapsed(p95)
+    print "p99: %s" % pretty_elapsed(p99)
+    print "CSVs for plopping into a spreadsheet:"
+    print "week of, ci builds, iterations, median iteration speed, p95, p99"
+    # The 0:0:secs format does the right thing when pasted into a duration col
+    # in google docs.
+    print "%s, %d, %d, 0:0:%d, 0:0:%d, 0:0:%d" % (
+        start, len(cis), len(iteration_times), p50, p95, p99)
 
 
 def first_success_from(sorted_builds, earliest):
