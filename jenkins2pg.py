@@ -15,8 +15,12 @@ def main():
     logging.basicConfig()
     jenkins_url = environ['JENKINS_URL']
     conn = psycopg2.connect(environ['POSTGRES_DSN'])
+    skip = set(environ['SKIP_JOBS'].split(','))
     errors = False
     for job in get_jobs(jenkins_url):
+        if job in skip:
+            print "Skipping %r" % job
+            continue
         print "Downloading info for last 100 builds of %r" % job
         try:
             for build in get_builds(jenkins_url, job):
