@@ -35,7 +35,7 @@ def stats(postgres_dsn, start, include_fail=True):
     test_sql = ('select * from builds '
               'where job IN (%s, %s) and timestamp_utc >= %s and timestamp_utc < %s ')
     if not include_fail:
-        test_sql += "and result != 'SUCCESS' "
+        test_sql += "and result = 'SUCCESS' "
     test_sql += 'order by timestamp_utc asc'
     other_sql = ('select * from builds '
                  'where job = %s and timestamp_utc >= %s '
