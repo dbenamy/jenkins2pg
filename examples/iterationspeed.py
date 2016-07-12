@@ -32,30 +32,30 @@ def stats(postgres_dsn, start, include_fail=True):
     end = start + timedelta(days=7)
     conn = psycopg2.connect(postgres_dsn)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    ci_sql = ('select * from builds '
+    test_sql = ('select * from builds '
               'where job IN (%s, %s) and timestamp_utc >= %s and timestamp_utc < %s ')
     if not include_fail:
-        ci_sql += "and result != 'SUCCESS' "
-    ci_sql += 'order by timestamp_utc asc'
+        test_sql += "and result != 'SUCCESS' "
+    test_sql += 'order by timestamp_utc asc'
     other_sql = ('select * from builds '
                  'where job = %s and timestamp_utc >= %s '
                  'order by timestamp_utc asc')
-    cur.execute(ci_sql, ('dogweb-ci', 'dogweb-to-staging', start, end))
-    cis = cur.fetchall()
+    cur.execute(test_sql, ('dogweb-test', 'dogweb-to-staging', start, end))
+    tests = cur.fetchall()
     cur.execute(other_sql, ('build-dogweb-staging', start))
     builds = cur.fetchall()
     cur.execute(other_sql, ('deploy-dogweb-staging', start))
     deploys = cur.fetchall()
 
     iteration_times = []
-    for ci in cis:
-        # print dict(ci)
-        if ci['result'] != 'SUCCESS':
+    for test in tests:
+        # print dict(test)
+        if test['result'] != 'SUCCESS':
             continue
-        ci_end = ci['timestamp_utc'] + timedelta(seconds=ci['duration'])
+        ci_end = test['timestamp_utc'] + timedelta(seconds=test['duration'])
         bld = first_success_from(builds, ci_end)
         if not bld:
-            print "Didn't find any successful builds after ci %r." % ci['id']
+            print "Didn't find any successful builds after test %r." % test['id']
             continue
         bld_end = bld['timestamp_utc'] + timedelta(seconds=bld['duration'])
         deploy = first_success_from(deploys, bld_end)
@@ -63,16 +63,16 @@ def stats(postgres_dsn, start, include_fail=True):
             print "Didn't find any successful deploys after build %r." % bld['id']
             continue
         deploy_end = deploy['timestamp_utc'] + timedelta(seconds=deploy['duration'])
-        total = deploy_end - ci['timestamp_utc']
+        total = deploy_end - test['timestamp_utc']
         iteration_times.append(total.total_seconds())
-        print "dogweb-ci %s at %sZ took %s to get onto staging." % (
-            ci['jenkins_id'], ci['timestamp_utc'],
+        print "%s %s at %sZ took %s to get onto staging." % (
+            test['job'], test['jenkins_id'], test['timestamp_utc'],
             pretty_elapsed(total.total_seconds()))
 
     print '\n-----------------------------\n'
 
-    print "%d ci builds (%d iterations) from %s to %s" % (
-        len(cis), len(iteration_times), start, end)
+    print "%d test builds (%d iterations) from %s to %s" % (
+        len(tests), len(iteration_times), start, end)
     iteration_times.sort()
     p50 = percentile(iteration_times,  0.5)
     p95 = percentile(iteration_times, 0.95)
@@ -81,11 +81,11 @@ def stats(postgres_dsn, start, include_fail=True):
     print "p95: %s" % pretty_elapsed(p95)
     print "p99: %s" % pretty_elapsed(p99)
     print "CSVs for plopping into a spreadsheet:"
-    print "week of, ci builds, iterations, median iteration speed, p95, p99"
+    print "week of, test builds, iterations, median iteration speed, p95, p99"
     # The 0:0:secs format does the right thing when pasted into a duration col
     # in google docs.
     print "%s, %d, %d, 0:0:%d, 0:0:%d, 0:0:%d" % (
-        start, len(cis), len(iteration_times), p50, p95, p99)
+        start, len(tests), len(iteration_times), p50, p95, p99)
 
 
 def first_success_from(sorted_builds, earliest):
