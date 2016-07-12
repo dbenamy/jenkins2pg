@@ -13,5 +13,5 @@ psql < schema.sql
 
 ```
 python jenkins2pg.py # this is safe to re-run
-python iterationspeed.py
+python examples/iterationspeed.py
 ```
