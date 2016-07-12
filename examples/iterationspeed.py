@@ -13,7 +13,10 @@ import psycopg2.extras
 
 def main():
     postgres_dsn = environ['POSTGRES_DSN']
+    print "All builds:"
     stats(postgres_dsn, start_of_last_week())
+    print "\nOnly passing first step:"
+    stats(postgres_dsn, start_of_last_week(), include_fail=False)
 
 
 def start_of_last_week():
@@ -23,19 +26,21 @@ def start_of_last_week():
     return sun - timedelta(days=7)
 
 
-def stats(postgres_dsn, start):
+def stats(postgres_dsn, start, include_fail=True):
     """Prints stats for the week starting at start.
     """
     end = start + timedelta(days=7)
     conn = psycopg2.connect(postgres_dsn)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     ci_sql = ('select * from builds '
-              'where job = %s and timestamp_utc >= %s and timestamp_utc < %s '
-              'order by timestamp_utc asc')
+              'where job IN (%s, %s) and timestamp_utc >= %s and timestamp_utc < %s ')
+    if not include_fail:
+        ci_sql += "and result != 'SUCCESS' "
+    ci_sql += 'order by timestamp_utc asc'
     other_sql = ('select * from builds '
                  'where job = %s and timestamp_utc >= %s '
                  'order by timestamp_utc asc')
-    cur.execute(ci_sql, ('dogweb-ci', start, end))
+    cur.execute(ci_sql, ('dogweb-ci', 'dogweb-to-staging', start, end))
     cis = cur.fetchall()
     cur.execute(other_sql, ('build-dogweb-staging', start))
     builds = cur.fetchall()
