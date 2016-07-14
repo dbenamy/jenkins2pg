@@ -15,8 +15,6 @@ def main():
     postgres_dsn = environ['POSTGRES_DSN']
     print "All builds:"
     stats(postgres_dsn, start_of_last_week())
-    print "\nOnly passing first step:"
-    stats(postgres_dsn, start_of_last_week(), include_fail=False)
 
 
 def start_of_last_week():
@@ -26,17 +24,15 @@ def start_of_last_week():
     return sun - timedelta(days=7)
 
 
-def stats(postgres_dsn, start, include_fail=True):
+def stats(postgres_dsn, start):
     """Prints stats for the week starting at start.
     """
     end = start + timedelta(days=7)
     conn = psycopg2.connect(postgres_dsn)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     test_sql = ('select * from builds '
-              'where job IN (%s, %s) and timestamp_utc >= %s and timestamp_utc < %s ')
-    if not include_fail:
-        test_sql += "and result = 'SUCCESS' "
-    test_sql += 'order by timestamp_utc asc'
+                'where job IN (%s, %s) and timestamp_utc >= %s and timestamp_utc < %s '
+                'order by timestamp_utc asc')
     other_sql = ('select * from builds '
                  'where job = %s and timestamp_utc >= %s '
                  'order by timestamp_utc asc')
@@ -49,7 +45,6 @@ def stats(postgres_dsn, start, include_fail=True):
 
     iteration_times = []
     for test in tests:
-        # print dict(test)
         if test['result'] != 'SUCCESS':
             continue
         ci_end = test['timestamp_utc'] + timedelta(seconds=test['duration'])
