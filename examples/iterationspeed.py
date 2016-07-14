@@ -40,7 +40,7 @@ def stats(postgres_dsn, start, include_fail=True):
     other_sql = ('select * from builds '
                  'where job = %s and timestamp_utc >= %s '
                  'order by timestamp_utc asc')
-    cur.execute(test_sql, ('dogweb-test', 'dogweb-to-staging', start, end))
+    cur.execute(test_sql, ('dogweb-ci', 'dogweb-to-staging', start, end))
     tests = cur.fetchall()
     cur.execute(other_sql, ('build-dogweb-staging', start))
     builds = cur.fetchall()
